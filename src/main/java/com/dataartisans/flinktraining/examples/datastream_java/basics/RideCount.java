@@ -41,8 +41,12 @@ public class RideCount {
 		ParameterTool params = ParameterTool.fromArgs(args);
 		final String input = params.get("input", ExerciseBase.pathToRideData);
 
-		final int maxEventDelay = 60;       // events are out of order by max 60 seconds
-		final int servingSpeedFactor = 600; // events of 10 minutes are served every second
+		final int maxEventDelay = 60;       // 60s 之内的数据是无序的，也就是说最大延迟是60s
+
+        // 为了尽可能逼真地生成流，事件与其时间戳成比例地发出。
+        //实际上相隔十分钟后发生的两件事也在十分钟之后发生。
+        //可以指定加速因子来“快进”流，即，给定加速因子60，在一分钟内发生的事件在一秒内被服务。
+		final int servingSpeedFactor = 600;
 
 		// set up streaming execution environment
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -59,10 +63,14 @@ public class RideCount {
 					}
 		});
 
-		// partition the stream by the driverId
-		KeyedStream<Tuple2<Long, Long>, Tuple> keyedByDriverId = tuples.keyBy(0);
+		// 按照 driverId 进行分组
+		// <2,1>,2
+		// <2,1>,2
+		KeyedStream<Tuple2<Long, Long>,Tuple> keyedByDriverId = tuples.keyBy(0);
 
-		// count the rides for each driver
+        //keyedByDriverId.print();
+
+		// count 开车次数 for each driver
 		DataStream<Tuple2<Long, Long>> rideCounts = keyedByDriverId.sum(1);
 
 		// we could, in fact, print out any or all of these streams

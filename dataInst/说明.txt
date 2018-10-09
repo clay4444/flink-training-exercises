@@ -1,0 +1,47 @@
+数据说明
+
+=====出租车出行数据========
+我们的出租车数据集包含有关纽约市各个出租车的信息。
+每次乘车由两个事件代表，即旅行开始和旅行结束事件。
+
+每条记录由11个属性：
+rideId         : Long      // 每次乘车的唯一id
+taxiId         : Long      // 每个出租车的唯一id
+driverId       : Long      // 每个司机的唯一id
+isStart        : Boolean   // true代表乘车开始，false代表乘车结束
+startTime      : DateTime  // 乘车的开始时间
+endTime        : DateTime  // 乘车的结束时间
+                           //   "1970-01-01 00:00:00" for start events
+startLon       : Float     // 开始经度
+startLat       : Float     // 开始纬度
+endLon         : Float     // 结束经度
+endLat         : Float     // 结束纬度
+passengerCnt   : Short     // 本次乘车的乘客数
+
+
+=====出租车费用数据========
+
+rideId         : Long      // 每次乘车的唯一id
+taxiId         : Long      // 每个出租车的唯一id
+driverId       : Long      // 每个司机的唯一id
+startTime      : DateTime  // 乘车的开始时间
+paymentType    : String    // 现金还是信用卡
+tip            : Float     // 每次乘车的建议
+tolls          : Float     // 应收费用
+totalFare      : Float     // 收取的总票价
+
+
+
+================source============
+
+event source：
+1. TaxiRideSource
+2. TaxiFareSource
+
+Checkpointing source
+1. CheckpointedTaxiRideSource
+2. CheckpointedTaxiFareSource
+
+Table source
+1. TaxiRideTableSource
+2. TaxiFareTableSource

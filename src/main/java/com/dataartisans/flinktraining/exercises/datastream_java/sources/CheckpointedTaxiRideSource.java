@@ -62,7 +62,7 @@ public class CheckpointedTaxiRideSource implements SourceFunction<TaxiRide>, Lis
 	private transient InputStream gzipStream;
 
 	// state
-	// number of emitted events
+	// 发送事件的个数
 	private long eventCnt = 0;
 
 	/**

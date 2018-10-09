@@ -52,8 +52,8 @@ object RidesAndFaresExercise {
 
     // set up streaming execution environment
     val env = StreamExecutionEnvironment.getExecutionEnvironment
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.setParallelism(ExerciseBase.parallelism)
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)  // 事件时间
+    env.setParallelism(ExerciseBase.parallelism)  //4
 
     val rides = env
       .addSource(rideSourceOrTest(new TaxiRideSource(ridesFile, delay, servingSpeedFactor)))

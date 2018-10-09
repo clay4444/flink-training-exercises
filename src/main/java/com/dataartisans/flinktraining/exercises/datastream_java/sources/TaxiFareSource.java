@@ -37,13 +37,13 @@ import java.util.zip.GZIPInputStream;
  * read from a gzipped input file. Each record has a time stamp and the input file must be
  * ordered by this time stamp.
  *
- * In order to simulate a realistic stream source, the SourceFunction serves events proportional to
- * their timestamps. In addition, the serving of events can be delayed by a bounded random delay
- * which causes the events to be served slightly out-of-order of their timestamps.
+ * 为了尽可能逼真地生成流，事件与其时间戳成比例地发出。实际上相隔十分钟后发生的两件事也在十分钟之后发生。
  *
- * The serving speed of the SourceFunction can be adjusted by a serving speed factor.
- * A factor of 60.0 increases the logical serving time by a factor of 60, i.e., events of one
- * minute (60 seconds) are served in 1 second.
+ * 可以指定加速因子来“快进”流，即，给定加速因子60，在一分钟内发生的事件在一秒内被服务。
+ *
+ * 此外，可以指定最大服务延迟，这导致每个事件在指定范围内随机延迟。
+ *
+ * 这产生了无序流，这在许多实际应用中是常见的。
  *
  * This SourceFunction is an EventSourceFunction and does continuously emit watermarks.
  * Hence it is able to operate in event time mode which is configured as follows:
@@ -53,11 +53,11 @@ import java.util.zip.GZIPInputStream;
  */
 public class TaxiFareSource implements SourceFunction<TaxiFare> {
 
-	private final int maxDelayMsecs;
-	private final int watermarkDelayMSecs;
+	private final int maxDelayMsecs;        // 指定最大服务延迟，这导致每个事件在指定范围内随机延迟。
+	private final int watermarkDelayMSecs;  // watermark 等待时间
 
-	private final String dataFilePath;
-	private final int servingSpeed;
+	private final String dataFilePath;      //文件路径
+	private final int servingSpeed;  //加速因子
 
 	private transient BufferedReader reader;
 	private transient InputStream gzipStream;
@@ -100,7 +100,7 @@ public class TaxiFareSource implements SourceFunction<TaxiFare> {
 		}
 		this.dataFilePath = dataFilePath;
 		this.maxDelayMsecs = maxEventDelaySecs * 1000;
-		this.watermarkDelayMSecs = maxDelayMsecs < 10000 ? 10000 : maxDelayMsecs;
+		this.watermarkDelayMSecs = maxDelayMsecs < 10000 ? 10000 : maxDelayMsecs;  //watermark 等待时间 = 最大服务延迟
 		this.servingSpeed = servingSpeedFactor;
 	}
 
@@ -119,12 +119,16 @@ public class TaxiFareSource implements SourceFunction<TaxiFare> {
 
 	}
 
+	//一直生成数据流的方法
 	private void generateUnorderedStream(SourceContext<TaxiFare> sourceContext) throws Exception {
 
+	    // 当前时间   毫秒数
 		long servingStartTime = Calendar.getInstance().getTimeInMillis();
 		long dataStartTime;
 
 		Random rand = new Random(7452);
+
+		// 优先级队列，Long 是事件的开始时间戳+随机延迟时间，目的是模拟乱序数据
 		PriorityQueue<Tuple2<Long, Object>> emitSchedule = new PriorityQueue<>(
 				32,
 				new Comparator<Tuple2<Long, Object>>() {
@@ -138,11 +142,11 @@ public class TaxiFareSource implements SourceFunction<TaxiFare> {
 		String line;
 		TaxiFare fare;
 		if (reader.ready() && (line = reader.readLine()) != null) {
-			// read first ride
+			// 读取第一个TaxiFare 数据对象
 			fare = TaxiFare.fromString(line);
-			// extract starting timestamp
-			dataStartTime = getEventTime(fare);
-			// get delayed time
+			// 抽取开始时间戳
+			dataStartTime = getEventTime(fare);   //获取当前数据的开始时间，毫秒
+			// 获取延迟时间
 			long delayedEventTime = dataStartTime + getNormalDelayMsecs(rand);
 
 			emitSchedule.add(new Tuple2<Long, Object>(delayedEventTime, fare));

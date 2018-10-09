@@ -17,6 +17,7 @@ package com.dataartisans.flinktraining.examples.table_scala.stream.popularPlaces
 
 import com.dataartisans.flinktraining.exercises.datastream_java.utils.GeoUtils.{IsInNYC, ToCellId, ToCoords}
 import com.dataartisans.flinktraining.examples.table_java.sources.TaxiRideTableSource
+import com.dataartisans.flinktraining.exercises.datastream_java.utils.ExerciseBase.pathToRideData
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.TimeCharacteristic
@@ -30,7 +31,7 @@ object PopularPlacesSql {
 
     // read parameters
     val params = ParameterTool.fromArgs(args)
-    val input = params.getRequired("input")
+    val input = params.get("input",pathToRideData)
 
     val maxEventDelay = 60       // events are out of order by max 60 seconds
     val servingSpeedFactor = 600 // events of 10 minutes are served in 1 second
@@ -45,10 +46,12 @@ object PopularPlacesSql {
     // register TaxiRideTableSource as table "TaxiRides"
     tEnv.registerTableSource(
       "TaxiRides",
+
+      // 这里eventtime实现的方式是：多添加一个字段，字段名就叫eventtime，取startTime或者endTime的值，转化为时间戳，因为只有Types.sql_timestamp
       new TaxiRideTableSource(input, maxEventDelay, servingSpeedFactor))
 
     // register user-defined functions
-    tEnv.registerFunction("isInNYC", new IsInNYC)
+    tEnv.registerFunction("isInNYC", new IsInNYC)   // 继承 ScalarFunction，实现eval 方法
     tEnv.registerFunction("toCellId", new ToCellId)
     tEnv.registerFunction("toCoords", new ToCoords)
 

@@ -39,164 +39,168 @@ import java.util.List;
  * This TableSource generates a streaming table of taxi ride records which are
  * read from a gzipped input file. Each record has a time stamp and the input file must be
  * ordered by this time stamp.
- *
+ * <p>
+ * 该TableSource 生成了一个基于出租车行驶记录的数据流表，每条记录有一个时间戳，数据必须根据时间戳排序
+ * <p>
  * In order to simulate a realistic streaming table , the TableSource serves events proportional to
  * their timestamps. In addition, the serving of events can be delayed by a bounded random delay
  * which causes the events to be served slightly out-of-order of their timestamps.
- *
+ * <p>
  * The serving speed of the TableSource can be adjusted by a serving speed factor.
  * A factor of 60.0 increases the logical serving time by a factor of 60, i.e., events of one
  * minute (60 seconds) are served in 1 second.
- *
+ * <p>
  * This TableSource operates in event-time mode which must be enabled as follows:
- *
- *   StreamExecutionEnvironment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
- *
+ * <p>
+ * StreamExecutionEnvironment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
  */
 public class TaxiRideTableSource implements StreamTableSource<Row>, DefinedRowtimeAttributes {
 
-	private final TaxiRideSource taxiRideSource;
+    private final TaxiRideSource taxiRideSource;
 
-	/**
-	 * Serves the taxi ride rows from the specified and ordered gzipped input file.
-	 * Rows are served exactly in order of their time stamps
-	 * at the speed at which they were originally generated.
-	 *
-	 * @param dataFilePath The gzipped input file from which the taxi ride rows are read.
-	 */
-	public TaxiRideTableSource(String dataFilePath) {
-		this.taxiRideSource = new TaxiRideSource(dataFilePath);
-	}
+    /**
+     * Serves the taxi ride rows from the specified and ordered gzipped input file.
+     * Rows are served exactly in order of their time stamps
+     * at the speed at which they were originally generated.
+     *
+     * @param dataFilePath The gzipped input file from which the taxi ride rows are read.
+     */
+    public TaxiRideTableSource(String dataFilePath) {
+        this.taxiRideSource = new TaxiRideSource(dataFilePath);
+    }
 
-	/**
-	 * Serves the taxi ride rows from the specified and ordered gzipped input file.
-	 * Rows are served exactly in order of their time stamps
-	 * in a serving speed which is proportional to the specified serving speed factor.
-	 *
-	 * @param dataFilePath The gzipped input file from which the taxi ride rows are read.
-	 * @param servingSpeedFactor The serving speed factor by which the logical serving time is adjusted.
-	 */
-	public TaxiRideTableSource(String dataFilePath, int servingSpeedFactor) {
-		this.taxiRideSource = new TaxiRideSource(dataFilePath, 0, servingSpeedFactor);
-	}
+    /**
+     * Serves the taxi ride rows from the specified and ordered gzipped input file.
+     * Rows are served exactly in order of their time stamps
+     * in a serving speed which is proportional to the specified serving speed factor.
+     *
+     * @param dataFilePath       The gzipped input file from which the taxi ride rows are read.
+     * @param servingSpeedFactor The serving speed factor by which the logical serving time is adjusted.
+     */
+    public TaxiRideTableSource(String dataFilePath, int servingSpeedFactor) {
+        this.taxiRideSource = new TaxiRideSource(dataFilePath, 0, servingSpeedFactor);
+    }
 
-	/**
-	 * Serves the taxi ride rows from the specified and ordered gzipped input file.
-	 * Rows are served out-of time stamp order with specified maximum random delay
-	 * in a serving speed which is proportional to the specified serving speed factor.
-	 *
-	 * @param dataFilePath The gzipped input file from which the taxi ride rows are read.
-	 * @param maxEventDelaySecs The max time in seconds by which rows are delayed.
-	 * @param servingSpeedFactor The serving speed factor by which the logical serving time is adjusted.
-	 */
-	public TaxiRideTableSource(String dataFilePath, int maxEventDelaySecs, int servingSpeedFactor) {
-		this.taxiRideSource = new TaxiRideSource(dataFilePath, maxEventDelaySecs, servingSpeedFactor);
-	}
+    /**
+     * Serves the taxi ride rows from the specified and ordered gzipped input file.
+     * Rows are served out-of time stamp order with specified maximum random delay
+     * in a serving speed which is proportional to the specified serving speed factor.
+     *
+     * @param dataFilePath       The gzipped input file from which the taxi ride rows are read.
+     * @param maxEventDelaySecs  The max time in seconds by which rows are delayed.
+     * @param servingSpeedFactor The serving speed factor by which the logical serving time is adjusted.
+     */
+    public TaxiRideTableSource(String dataFilePath, int maxEventDelaySecs, int servingSpeedFactor) {
+        this.taxiRideSource = new TaxiRideSource(dataFilePath, maxEventDelaySecs, servingSpeedFactor);
+    }
 
-	/**
-	 * Specifies schema of the produced table.
-	 *
-	 * @return The schema of the produced table.
-	 */
-	@Override
-	public TypeInformation<Row> getReturnType() {
+    /**
+     * 指定表的schema
+     */
+    @Override
+    public TypeInformation<Row> getReturnType() {
 
-		TypeInformation<?>[] types = new TypeInformation[] {
-				Types.LONG,
-				Types.LONG,
-				Types.LONG,
-				Types.BOOLEAN,
-				Types.FLOAT,
-				Types.FLOAT,
-				Types.FLOAT,
-				Types.FLOAT,
-				Types.SHORT
-		};
+        TypeInformation<?>[] types = new TypeInformation[]{
+                Types.LONG,
+                Types.LONG,
+                Types.LONG,
+                Types.BOOLEAN,
+                Types.FLOAT,
+                Types.FLOAT,
+                Types.FLOAT,
+                Types.FLOAT,
+                Types.SHORT
+        };
 
-		String[] names = new String[]{
-				"rideId",
-				"taxiId",
-				"driverId",
-				"isStart",
-				"startLon",
-				"startLat",
-				"endLon",
-				"endLat",
-				"passengerCnt"
-		};
+        String[] names = new String[]{
+                "rideId",
+                "taxiId",
+                "driverId",
+                "isStart",
+                "startLon",
+                "startLat",
+                "endLon",
+                "endLat",
+                "passengerCnt"
+        };
 
-		return new RowTypeInfo(types, names);
-	}
+        return new RowTypeInfo(types, names);
+    }
 
-	@Override
-	public TableSchema getTableSchema() {
-		TypeInformation<?>[] types = new TypeInformation[] {
-				Types.LONG,
-				Types.LONG,
-				Types.LONG,
-				Types.BOOLEAN,
-				Types.FLOAT,
-				Types.FLOAT,
-				Types.FLOAT,
-				Types.FLOAT,
-				Types.SHORT,
-				Types.SQL_TIMESTAMP
-		};
+    //多了一个eventTime，作为时间戳，是SQL_TIMESTAMP 类型的
+    @Override
+    public TableSchema getTableSchema() {
+        TypeInformation<?>[] types = new TypeInformation[]{
+                Types.LONG,
+                Types.LONG,
+                Types.LONG,
+                Types.BOOLEAN,
+                Types.FLOAT,
+                Types.FLOAT,
+                Types.FLOAT,
+                Types.FLOAT,
+                Types.SHORT,
+                Types.SQL_TIMESTAMP
+        };
 
-		String[] names = new String[]{
-				"rideId",
-				"taxiId",
-				"driverId",
-				"isStart",
-				"startLon",
-				"startLat",
-				"endLon",
-				"endLat",
-				"passengerCnt",
-				"eventTime"
-		};
+        String[] names = new String[]{
+                "rideId",
+                "taxiId",
+                "driverId",
+                "isStart",
+                "startLon",
+                "startLat",
+                "endLon",
+                "endLat",
+                "passengerCnt",
+                "eventTime"
+        };
 
-		return new TableSchema(names, types);
-	}
+        return new TableSchema(names, types);
+    }
 
-	@Override
-	public String explainSource() {
-		return "TaxiRides";
-	}
+    @Override
+    public String explainSource() {
+        return "TaxiRides";
+    }
 
-	@Override
-	public DataStream<Row> getDataStream(StreamExecutionEnvironment execEnv) {
+    @Override
+    public DataStream<Row> getDataStream(StreamExecutionEnvironment execEnv) {
 
-		return execEnv
-			.addSource(this.taxiRideSource)
-			.map(new TaxiRideToRow()).returns(getReturnType());
-	}
+        return execEnv
+                .addSource(this.taxiRideSource)
+                .map(new TaxiRideToRow())
+                .returns(getReturnType());
+    }
 
-	@Override
-	public List<RowtimeAttributeDescriptor> getRowtimeAttributeDescriptors() {
-		RowtimeAttributeDescriptor descriptor = new RowtimeAttributeDescriptor("eventTime", new StreamRecordTimestamp(), new PreserveWatermarks());
-		return Collections.singletonList(descriptor);
-	}
+    @Override
+    public List<RowtimeAttributeDescriptor> getRowtimeAttributeDescriptors() {
 
-	/**
-	 * Converts TaxiRide records into table Rows.
-	 */
-	public static class TaxiRideToRow implements MapFunction<TaxiRide, Row> {
+        //StreamRecordTimestamp 表示从原始数据中抽取 eventTime 字段作为事件时间
+        //PreserveWatermarks  : 一种策略，指示应从基础数据流中保留水印,可以自定义
+        RowtimeAttributeDescriptor descriptor = new RowtimeAttributeDescriptor("eventTime", new StreamRecordTimestamp(), new PreserveWatermarks());
+        return Collections.singletonList(descriptor);  // 指定descriptor是不可变的
+    }
 
-		@Override
-		public Row map(TaxiRide ride) throws Exception {
+    /**
+     * Converts TaxiRide records into table Rows.
+     */
+    public static class TaxiRideToRow implements MapFunction<TaxiRide, Row> {
 
-			return Row.of(
-					ride.rideId,
-					ride.taxiId,
-					ride.driverId,
-					ride.isStart,
-					ride.startLon,
-					ride.startLat,
-					ride.endLon,
-					ride.endLat,
-					ride.passengerCnt);
-		}
-	}
+        @Override
+        public Row map(TaxiRide ride) throws Exception {
+
+            return Row.of(
+                    ride.rideId,
+                    ride.taxiId,
+                    ride.driverId,
+                    ride.isStart,
+                    ride.startLon,
+                    ride.startLat,
+                    ride.endLon,
+                    ride.endLat,
+                    ride.passengerCnt);
+        }
+    }
 
 }

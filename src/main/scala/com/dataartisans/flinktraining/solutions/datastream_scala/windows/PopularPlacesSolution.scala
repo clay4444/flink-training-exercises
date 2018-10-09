@@ -28,16 +28,19 @@ import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.util.Collector
 
 /**
- * Scala reference implementation for the "Popular Places" exercise of the Flink training
- * (http://training.data-artisans.com).
- *
- * The task of the exercise is to identify every five minutes popular areas where many taxi rides
- * arrived or departed in the last 15 minutes.
- *
- * Parameters:
- * -input path-to-input-file
- *
- */
+  * Scala reference implementation for the "Popular Places" exercise of the Flink training
+  * (http://training.data-artisans.com).
+  *
+  * The task of the exercise is to identify every five minutes popular areas where many taxi rides
+  * arrived or departed in the last 15 minutes.
+  *
+  * Parameters:
+  * -input path-to-input-file
+  * 寻找热门地点
+  *
+  * 返回的数据流：
+  * Tuple5<Float, Float, Long, Boolean, Integer> 位置单元格的经度，纬度，计数的时间戳，到达或离开计数的标志（布尔值），实际计数
+  */
 object PopularPlacesSolution {
 
   def main(args: Array[String]) {
@@ -47,8 +50,8 @@ object PopularPlacesSolution {
     val input = params.get("input", pathToRideData)
     val popThreshold = params.getInt("threshold", 20)
 
-    val maxDelay = 60     // events are out of order by max 60 seconds
-    val speed = 600       // events of 10 minutes are served in 1 second
+    val maxDelay = 60 // events are out of order by max 60 seconds
+    val speed = 600   // events of 10 minutes are served in 1 second
 
     // set up streaming execution environment
     val env = StreamExecutionEnvironment.getExecutionEnvironment
@@ -60,21 +63,24 @@ object PopularPlacesSolution {
 
     // find n most popular spots
     val popularPlaces = rides
-      // remove all rides which are not within NYC
+      // 排除所有不在NYC的数据
       .filter { r => GeoUtils.isInNYC(r.startLon, r.startLat) && GeoUtils.isInNYC(r.endLon, r.endLat) }
-      // match ride to grid cell and event type (start or end)
+      // 转换为  (gridId, true)  gridId 代表一个100x100米大小的区域的单元ID，true 代表是开始事件
       .map(new GridCellMatcher)
-      // partition by cell id and event type
-      .keyBy( k => k )
-      // build sliding window
+      // 根据区域单元id和事件类型分组
+      .keyBy(k => k)
+      // 构建滑动窗口
       .timeWindow(Time.minutes(15), Time.minutes(5))
-      // count events in window
-      .apply{ (key: (Int, Boolean), window, vals, out: Collector[(Int, Long, Boolean, Int)]) =>
-        out.collect( (key._1, window.getEnd, key._2, vals.size) )
-      }
-      // filter by popularity threshold
-      .filter( c => { c._4 >= popThreshold } )
-      // map grid cell to coordinates
+      // 对窗口内的事件计数
+      .apply { (key: (Int, Boolean), window, vals, out: Collector[(Int, Long, Boolean, Int)]) =>
+
+      //（gridId, (window 结束时的时间戳)，开始/结束 事件，当前分组之后组内的数量）
+      out.collect((key._1, window.getEnd, key._2, vals.size))
+    }
+      // 根据阈值过滤，
+      .filter(c => { c._4 >= popThreshold })
+      // 把区域坐标id 转换回 经度 和 纬度
+      // map之后的数据   （经度，纬度, (window 的结束)，开始/结束 事件，当前分组之后组内的数量）
       .map(new GridToCoordinates)
 
     // print result on stdout
@@ -85,18 +91,18 @@ object PopularPlacesSolution {
   }
 
   /**
-   * Map taxi ride to grid cell and event type.
-   * Start records use departure location, end record use arrival location.
-   */
+    * Map taxi ride to grid cell and event type.
+    * Start records use departure location, end record use arrival location.
+    */
   class GridCellMatcher extends MapFunction[TaxiRide, (Int, Boolean)] {
 
     def map(taxiRide: TaxiRide): (Int, Boolean) = {
       if (taxiRide.isStart) {
-        // get grid cell id for start location
+        // 根据经度和纬度 来生成 一个大约100x100米大小的区域的单元ID。
         val gridId: Int = GeoUtils.mapToGridCell(taxiRide.startLon, taxiRide.startLat)
-        (gridId, true)
+        (gridId, true) // true 代表 开始地点
       } else {
-        // get grid cell id for end location
+        //
         val gridId: Int = GeoUtils.mapToGridCell(taxiRide.endLon, taxiRide.endLat)
         (gridId, false)
       }
@@ -104,8 +110,8 @@ object PopularPlacesSolution {
   }
 
   /**
-   * Maps the grid cell id back to longitude and latitude coordinates.
-   */
+    * 把区域坐标id 转换回 经度 和 纬度
+    */
   class GridToCoordinates extends MapFunction[
     (Int, Long, Boolean, Int),
     (Float, Float, Long, Boolean, Int)] {

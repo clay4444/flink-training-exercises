@@ -79,25 +79,29 @@ object RidesAndFaresSolution {
     lazy val fareState: ValueState[TaxiFare] = getRuntimeContext.getState(
       new ValueStateDescriptor[TaxiFare]("saved fare", classOf[TaxiFare]))
 
+    //处理 出行 数据
     override def flatMap1(ride: TaxiRide, out: Collector[(TaxiRide, TaxiFare)]): Unit = {
-      val fare = fareState.value
+
+      val fare = fareState.value   // 获取消费数据事件
       if (fare != null) {
         fareState.clear()
         out.collect((ride, fare))
       }
       else {
-        rideState.update(ride)
+        rideState.update(ride)    // 没有获取到对应的消费数据事件，就把这个出行数据事件state清除
       }
     }
 
+    // 处理消费数据
     override def flatMap2(fare: TaxiFare, out: Collector[(TaxiRide, TaxiFare)]): Unit = {
-      val ride = rideState.value
-      if (ride != null) {
-        rideState.clear()
-        out.collect((ride, fare))
+
+      val ride = rideState.value   // 获取这个消费数据事件对应的出行数据事件（看 rideId 是否相等）
+      if (ride != null) {          // 获取到了
+        rideState.clear()          // 清空状态
+        out.collect((ride, fare))  // 发送结果数据
       }
       else {
-        fareState.update(fare)
+        fareState.update(fare)     // 没有获取到对应的出行数据事件，就把这个消费数据事件state清除
       }
     }
   }
